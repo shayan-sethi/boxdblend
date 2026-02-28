@@ -1,0 +1,317 @@
+import { useState, useEffect } from "react";
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+export const Stars = ({ r }) => {
+  if (r == null) return <span style={{ color: "var(--muted)", fontSize: 11 }}>—</span>;
+  return (
+    <span style={{ color: "var(--gold)", fontSize: 12 }}>
+      {"★".repeat(Math.floor(r))}{r % 1 >= 0.5 ? "½" : ""}
+    </span>
+  );
+};
+
+const ratingColor = r =>
+  r >= 4 ? "var(--green)" :
+  r >= 3 ? "var(--gold)" :
+  r >= 2 ? "var(--amber)" :
+  "var(--red)";
+
+const starsStr = val =>
+  "★".repeat(Math.floor(val)) + (val % 1 >= 0.5 ? "½" : "");
+
+// ─── ScoreCard ────────────────────────────────────────────────────────────────
+
+export function ScoreCard({ r, n1, n2 }) {
+  const [barW, setBarW] = useState(0);
+  useEffect(() => {
+    const t = setTimeout(() => setBarW(r.blendScore), 80);
+    return () => clearTimeout(t);
+  }, [r.blendScore]);
+
+  return (
+    <div className="score-hero">
+      <div className="s-eye">blend score</div>
+      <div className="s-num">
+        {r.blendScore}<span className="s-pct">%</span>
+      </div>
+      <div className="s-lbl">{r.label}</div>
+      <div className="s-names">{n1} ✦ {n2}</div>
+      <div className="s-bar-wrap">
+        <div className="s-bar-fill" style={{ width: `${barW}%` }} />
+      </div>
+    </div>
+  );
+}
+
+// ─── StatsCard ────────────────────────────────────────────────────────────────
+
+export function StatsCard({ r, n1, n2 }) {
+  const same = Math.abs(r.avg1 - r.avg2) < 0.1;
+  const harsher = parseFloat(r.avg1) < parseFloat(r.avg2) ? n1 : n2;
+
+  const items = [
+    [r.shared.length,      "films in common"],
+    [r.sharedPct + "%",    "overlap rate"],
+    [r.total1 + r.total2,  "combined"],
+    ["⭑ " + r.avg1,        n1 + "'s avg"],
+    ["⭑ " + r.avg2,        n2 + "'s avg"],
+    [same ? "🤝" : "🔪",  same ? "equal harshness" : harsher + " rates lower"],
+    [r.only1Count,         "only " + n1 + " saw"],
+    [r.only2Count,         "only " + n2 + " saw"],
+    [r.ratedSharedCount,   "both rated"],
+  ];
+
+  return (
+    <div className="sc">
+      <div className="sc-head">
+        <div className="sc-title">By the Numbers</div>
+        <div className="sc-sub">the raw data</div>
+      </div>
+      <div className="sc-body">
+        <div className="qs-grid">
+          {items.map(([val, lbl], i) => (
+            <div className="qs-item" key={i}>
+              <div className="qs-num" style={{ fontSize: String(val).length > 6 ? 17 : undefined }}>
+                {val}
+              </div>
+              <div className="qs-label">{lbl}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── AgreedCard ───────────────────────────────────────────────────────────────
+
+export function AgreedCard({ r, n1, n2 }) {
+  return (
+    <div className="sc">
+      <div className="sc-head">
+        <div className="sc-title">Most Agreed</div>
+        <div className="sc-sub">films you saw completely eye-to-eye on</div>
+      </div>
+      <div className="sc-body">
+        {!r.agreedFilms.length
+          ? <p style={{ color: "var(--muted)", fontSize: 12 }}>No commonly rated films.</p>
+          : (
+            <div className="film-list">
+              {r.agreedFilms.map((f, i) => (
+                <div className="film-row" key={i}>
+                  <div className="film-rank">{i + 1}</div>
+                  <div className="film-info">
+                    <div className="film-title">{f.name}</div>
+                    <div className="film-year">{f.year}</div>
+                  </div>
+                  <div className="film-ratings">
+                    <div className="film-rating">
+                      <Stars r={f.r1} />
+                      <div className="film-rating-who">{n1.slice(0, 6)}</div>
+                    </div>
+                    <div className="film-rating">
+                      <Stars r={f.r2} />
+                      <div className="film-rating-who">{n2.slice(0, 6)}</div>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 11, color: f.diff === 0 ? "var(--green)" : "var(--muted)", width: 34, textAlign: "right", flexShrink: 0 }}>
+                    {f.diff === 0 ? "exact" : `±${f.diff.toFixed(1)}`}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+      </div>
+    </div>
+  );
+}
+
+// ─── ClashCard ────────────────────────────────────────────────────────────────
+
+export function ClashCard({ r, n1, n2 }) {
+  return (
+    <div className="sc">
+      <div className="sc-head">
+        <div className="sc-title">Biggest Clashes</div>
+        <div className="sc-sub">where your ratings diverged hardest</div>
+      </div>
+      <div className="sc-body">
+        {!r.disagreedFilms.length
+          ? <p style={{ color: "var(--muted)", fontSize: 12 }}>No rating clashes found.</p>
+          : r.disagreedFilms.slice(0, 7).map((f, i) => {
+              const [hiW, hiR, loW, loR] = f.r1 >= f.r2
+                ? [n1, f.r1, n2, f.r2]
+                : [n2, f.r2, n1, f.r1];
+              return (
+                <div className="clash-row" key={i}>
+                  <div className="clash-info">
+                    <div className="clash-title">{f.name}</div>
+                    <div className="clash-year">{f.year}</div>
+                  </div>
+                  <div className="clash-ratings">
+                    <div className="clash-r">
+                      <span className="clash-r-stars" style={{ color: ratingColor(loR) }}>
+                        {starsStr(loR)}
+                      </span>
+                      <span className="clash-r-who">{loW.slice(0, 6)}</span>
+                    </div>
+                    <span className="clash-arrow">→</span>
+                    <div className="clash-r">
+                      <span className="clash-r-stars" style={{ color: ratingColor(hiR) }}>
+                        {starsStr(hiR)}
+                      </span>
+                      <span className="clash-r-who">{hiW.slice(0, 6)}</span>
+                    </div>
+                    <div className="clash-delta">Δ{f.diff.toFixed(1)}</div>
+                  </div>
+                </div>
+              );
+            })}
+      </div>
+    </div>
+  );
+}
+
+// ─── GuiltyCard ───────────────────────────────────────────────────────────────
+
+export function GuiltyCard({ r, n1, n2 }) {
+  const Row = ({ gp, name, icon }) => gp ? (
+    <div className="hbox">
+      <div className="hbox-icon">{icon}</div>
+      <div>
+        <div className="hbox-label">{name}'s guilty pleasure</div>
+        <div className="hbox-val">{gp.Name}</div>
+        <div className="hbox-sub">
+          {gp.Year} · rated {gp.Rating}★ · +{gp.aboveAvg.toFixed(1)} above their avg
+        </div>
+      </div>
+    </div>
+  ) : (
+    <div className="hbox">
+      <div className="hbox-sub" style={{ color: "var(--muted)" }}>Not enough data for {name}</div>
+    </div>
+  );
+
+  return (
+    <div className="sc">
+      <div className="sc-head">
+        <div className="sc-title">Guilty Pleasures</div>
+        <div className="sc-sub">films rated well above your own average</div>
+      </div>
+      <div className="sc-body" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <Row gp={r.gp1} name={n1} icon="🎪" />
+        <Row gp={r.gp2} name={n2} icon="🍿" />
+      </div>
+    </div>
+  );
+}
+
+// ─── FavYearCard ──────────────────────────────────────────────────────────────
+
+export function FavYearCard({ r, n1, n2 }) {
+  const [y1, c1] = r.topYear1 || ["?", 0];
+  const [y2, c2] = r.topYear2 || ["?", 0];
+
+  return (
+    <div className="sc">
+      <div className="sc-head">
+        <div className="sc-title">Favourite Year</div>
+        <div className="sc-sub">the release year each person watched the most from</div>
+      </div>
+      <div className="sc-body">
+        <div className="two-col">
+          {[{ name: n1, year: y1, count: c1, color: "var(--gold)" },
+            { name: n2, year: y2, count: c2, color: "var(--amber)" }].map(({ name, year, count, color }) => (
+            <div key={name} className="hbox" style={{ flexDirection: "column", alignItems: "flex-start" }}>
+              <div className="hbox-label">{name}</div>
+              <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 48, fontWeight: 900, color, lineHeight: 1 }}>
+                {year}
+              </div>
+              <div className="hbox-sub">{count} films</div>
+            </div>
+          ))}
+        </div>
+        {y1 === y2 && (
+          <div style={{ marginTop: 14, textAlign: "center", fontSize: 11, color: "var(--gold)", letterSpacing: ".1em" }}>
+            ✦ &nbsp;you both gravitate to {y1} films&nbsp; ✦
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── EraCard ──────────────────────────────────────────────────────────────────
+
+export function EraCard({ r, n1, n2 }) {
+  const max = Math.max(
+    ...r.allDecades.map(d => Math.max(r.decades1[d] || 0, r.decades2[d] || 0)),
+    1
+  );
+
+  return (
+    <div className="sc">
+      <div className="sc-head">
+        <div className="sc-title">Era Preferences</div>
+        <div className="sc-sub">films watched by decade</div>
+      </div>
+      <div className="sc-body">
+        {r.allDecades.map(d => {
+          const c1 = r.decades1[d] || 0;
+          const c2 = r.decades2[d] || 0;
+          return (
+            <div className="decade-row" key={d}>
+              <div className="decade-lbl">{d}s</div>
+              <div className="decade-bars">
+                {[{ who: n1, count: c1, color: "var(--gold)" },
+                  { who: n2, count: c2, color: "var(--amber)" }].map(({ who, count, color }) => (
+                  <div className="decade-bar-line" key={who}>
+                    <div className="decade-who">{who.slice(0, 2)}</div>
+                    <div className="decade-track">
+                      <div className="decade-fill" style={{ width: `${(count / max) * 100}%`, background: color }} />
+                    </div>
+                    <div className="decade-count">{count}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── WatchNextCard ────────────────────────────────────────────────────────────
+
+export function WatchNextCard({ r, n1, n2 }) {
+  return (
+    <div className="sc">
+      <div className="sc-head">
+        <div className="sc-title">Watch Next</div>
+        <div className="sc-sub">top picks the other hasn't seen yet</div>
+      </div>
+      <div className="sc-body">
+        <div className="two-col">
+          {[{ list: r.topOnly1, name: n1 }, { list: r.topOnly2, name: n2 }].map(({ list, name }) => (
+            <div key={name}>
+              <div className="col-label">{name} recommends →</div>
+              <div className="film-list">
+                {list.map(f => (
+                  <div className="film-row" key={f.Name} style={{ paddingLeft: 0 }}>
+                    <div className="film-info">
+                      <div className="film-title">{f.Name}</div>
+                      <div className="film-year">{f.Year}</div>
+                    </div>
+                    <Stars r={parseFloat(f.Rating)} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
