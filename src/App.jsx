@@ -20,6 +20,24 @@ const SUBTITLES = {
   results:     null, // set dynamically from names
 };
 
+const parseBlendPayload = (storedValue) => {
+  if (!storedValue) throw new Error("No blend data found.");
+
+  if (typeof storedValue === "object") {
+    return storedValue;
+  }
+
+  if (typeof storedValue === "string") {
+    try {
+      return JSON.parse(storedValue);
+    } catch {
+      throw new Error("This blend data is unreadable. Ask your friend to create a new code.");
+    }
+  }
+
+  throw new Error("Unexpected blend data format.");
+};
+
 // ─── App ──────────────────────────────────────────────────────────────────────
 
 export default function App() {
@@ -91,7 +109,7 @@ export default function App() {
       try {
         const res = await window.storage.get("blend:" + code, true);
         if (!res) return;
-        const data = JSON.parse(res.value);
+        const data = parseBlendPayload(res.value);
         if (data.p2Films && data.p2Name) {
           clearInterval(pollRef.current);
           const f2 = fattenFilms(data.p2Films);
@@ -112,7 +130,7 @@ export default function App() {
     try {
       const res = await window.storage.get("blend:" + code, true);
       if (!res) { setJoinErr("No blend found with that code. Double-check it."); setJoinLoading(false); return; }
-      const data = JSON.parse(res.value);
+      const data = parseBlendPayload(res.value);
       if (data.p2Films) { setJoinErr("This blend already has two people. Ask your friend for a new one."); setJoinLoading(false); return; }
       setP1Name(data.p1Name);
       setJoinCode(code);
@@ -129,7 +147,7 @@ export default function App() {
     try {
       const res = await window.storage.get("blend:" + joinCode, true);
       if (!res) { alert("Session expired. Ask your friend to create a new blend."); return; }
-      const data = JSON.parse(res.value);
+      const data = parseBlendPayload(res.value);
       data.p2Name = myName.trim();
       data.p2Films = slimFilms(myFilms);
       data.p2Diary2026 = myMeta?.diary2026Count || 0;

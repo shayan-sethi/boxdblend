@@ -17,11 +17,16 @@ const apiGet = async (key) => {
   return data?.value ? { value: data.value } : null;
 };
 
+const normalizeValue = (value) => {
+  if (typeof value === "string") return value;
+  return JSON.stringify(value);
+};
+
 const apiSet = async (key, value) => {
   const res = await fetch("/api/storage", {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify({ key, value, ttlSeconds: 60 * 60 * 24 }),
+    body: JSON.stringify({ key, value: normalizeValue(value), ttlSeconds: 60 * 60 * 24 }),
   });
 
   if (!res.ok) {
@@ -40,7 +45,7 @@ const localGet = (key) => {
 };
 
 const localSet = (key, value) => {
-  localStorage.setItem(key, value);
+  localStorage.setItem(key, normalizeValue(value));
 };
 
 const shouldUseRemote = () => typeof window !== "undefined";
