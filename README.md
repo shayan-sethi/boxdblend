@@ -86,6 +86,19 @@ For cross-device code sharing in production, this app uses a Vercel Function (`a
 
 Without Redis configured, the app falls back to local browser storage and friend codes will only work in the same browser/device.
 
+## TMDB integration (optional)
+
+The **Most Niche vs Most Popular** card can use real popularity data from TMDB.
+
+1. Create a TMDB API key at `themoviedb.org`
+2. In Vercel project settings, add environment variable:
+	- `TMDB_API_KEY=your_key_here`
+3. Redeploy
+
+If `TMDB_API_KEY` is missing, the card falls back to local heuristics.
+
+The TMDB API route includes a built-in outbound throttle capped at 40 calls/second per server instance (below TMDB's 50/sec requirement).
+
 ## Project structure
 
 - `src/App.jsx` — app flow, session handling

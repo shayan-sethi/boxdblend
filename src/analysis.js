@@ -28,6 +28,23 @@ export function analyzeBlend(films1, films2, diary2026_1 = 0, diary2026_2 = 0, r
   const sharedPct = total > 0 ? (shared.length / total) * 100 : 0;
 
   const ratedShared = shared.filter(s => s.diff != null);
+
+  const uniqueFilms = films => {
+    const seen = new Set();
+    const out = [];
+    films.forEach(f => {
+      if (!f?.Name) return;
+      const year = f.Year || "";
+      const key = `${nk(f.Name)}:${year}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      out.push({ Name: f.Name, Year: year });
+    });
+    return out;
+  };
+
+  const allFilms1 = uniqueFilms(films1);
+  const allFilms2 = uniqueFilms(films2);
   const avgDiff = ratedShared.length > 0
     ? ratedShared.reduce((a, b) => a + b.diff, 0) / ratedShared.length
     : 0;
@@ -137,6 +154,35 @@ export function analyzeBlend(films1, films2, diary2026_1 = 0, diary2026_2 = 0, r
     .sort((a, b) => parseFloat(b.Rating) - parseFloat(a.Rating))
     .slice(0, 6);
 
+  const popularPick = [...ratedShared]
+    .sort((a, b) => (b.r1 + b.r2) - (a.r1 + a.r2) || a.diff - b.diff)
+    .map(f => ({
+      name: f.name,
+      year: f.year,
+      r1: f.r1,
+      r2: f.r2,
+      avgRating: (f.r1 + f.r2) / 2,
+    }))[0] || null;
+
+  const nicheCandidates = [
+    ...only1.map(f => ({
+      name: f.Name,
+      year: f.Year,
+      rating: f.Rating ? parseFloat(f.Rating) : null,
+      owner: "p1",
+    })),
+    ...only2.map(f => ({
+      name: f.Name,
+      year: f.Year,
+      rating: f.Rating ? parseFloat(f.Rating) : null,
+      owner: "p2",
+    })),
+  ];
+
+  const nichePick = [...nicheCandidates]
+    .sort((a, b) => (b.rating ?? -1) - (a.rating ?? -1))
+    [0] || null;
+
   const mostRewatched = films => {
     const rewatchMap = {};
     films.forEach(f => {
@@ -215,5 +261,9 @@ export function analyzeBlend(films1, films2, diary2026_1 = 0, diary2026_2 = 0, r
     recent1,
     recent2,
     ratedSharedCount: ratedShared.length,
+    popularPick,
+    nichePick,
+    allFilms1,
+    allFilms2,
   };
 }

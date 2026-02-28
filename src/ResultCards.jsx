@@ -316,6 +316,101 @@ export function WatchNextCard({ r, n1, n2 }) {
     </div>
   );
 }
+
+export function NicheVsPopularCard({ r, n1, n2, tmdbState }) {
+  const [activeTab, setActiveTab] = useState("p1");
+  const resolvedTmdbState = tmdbState || {
+    loading: true,
+    error: "",
+    p1Pick: null,
+    p2Pick: null,
+    p1AvgPopularity: null,
+    p2AvgPopularity: null,
+  };
+
+  const activePick = activeTab === "p1" ? resolvedTmdbState.p1Pick : resolvedTmdbState.p2Pick;
+  const activeName = activeTab === "p1" ? n1 : n2;
+  const p1Score = resolvedTmdbState.p1AvgPopularity;
+  const p2Score = resolvedTmdbState.p2AvgPopularity;
+  const hasBothScores = p1Score != null && p2Score != null;
+  const nichestName = !hasBothScores
+    ? null
+    : p1Score === p2Score
+      ? null
+      : p1Score < p2Score
+        ? n1
+        : n2;
+
+  return (
+    <div className="sc">
+      <div className="sc-head">
+        <div className="sc-title">Niche Battle</div>
+        <div className="sc-sub">two tabs, one niche pick per person</div>
+      </div>
+      <div className="sc-body">
+        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+          {[{ key: "p1", label: n1 }, { key: "p2", label: n2 }].map(tab => (
+            <button
+              key={tab.key}
+              className="copy-btn"
+              onClick={() => setActiveTab(tab.key)}
+              style={{
+                marginTop: 0,
+                flex: 1,
+                opacity: activeTab === tab.key ? 1 : 0.65,
+                borderColor: activeTab === tab.key ? "var(--gold)" : "var(--border)",
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="hbox" style={{ flexDirection: "column", alignItems: "flex-start" }}>
+          <div className="hbox-label">{activeName}'s most niche pick</div>
+          {resolvedTmdbState.loading ? (
+            <div className="hbox-sub" style={{ color: "var(--muted)" }}>Checking TMDB…</div>
+          ) : activePick ? (
+            <>
+              <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 28, fontWeight: 700, color: "var(--gold)", lineHeight: 1.2 }}>
+                {activePick.title}
+              </div>
+              <div className="hbox-sub">{activePick.year || ""}</div>
+              {activePick.voteCount > 0 && (
+                <div className="hbox-sub">TMDB votes: {activePick.voteCount}</div>
+              )}
+              <div className="hbox-sub">Popularity: {Number(activePick.popularity || 0).toFixed(1)}</div>
+            </>
+          ) : (
+            <div className="hbox-sub" style={{ color: "var(--muted)" }}>No exclusive films yet</div>
+          )}
+        </div>
+
+        <div className="two-col" style={{ marginTop: 14 }}>
+          <div className="hbox" style={{ flexDirection: "column", alignItems: "flex-start" }}>
+            <div className="hbox-label">{n1} popularity score</div>
+            <div className="hbox-sub">{p1Score != null ? p1Score.toFixed(1) : "N/A"}</div>
+          </div>
+          <div className="hbox" style={{ flexDirection: "column", alignItems: "flex-start" }}>
+            <div className="hbox-label">{n2} popularity score</div>
+            <div className="hbox-sub">{p2Score != null ? p2Score.toFixed(1) : "N/A"}</div>
+          </div>
+        </div>
+
+        <div style={{ marginTop: 12, textAlign: "center", fontSize: 11, color: "var(--gold-dim)", letterSpacing: ".08em" }}>
+          {nichestName ? `i guess ${nichestName} is more niche` : "i guess it is a tie"}
+        </div>
+
+        {!!resolvedTmdbState.error && (
+          <div style={{ marginTop: 12, textAlign: "center", fontSize: 11, color: "var(--muted)" }}>
+            {resolvedTmdbState.error}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function BiggestClashCard({ r, n1, n2 }) {
   return (
     <div className="sc">
