@@ -56,8 +56,20 @@ export function mergeWatchedAndRatings(watchedFilms, ratingsFilms) {
 
 // Slim down films for cloud storage (strips unused fields, keeps size manageable)
 export const slimFilms = films =>
-  films.map(f => ({ n: f.Name, y: f.Year, r: f.Rating ? parseFloat(f.Rating) : null }));
+  films.map(f => ({
+    n: f.Name,
+    y: f.Year,
+    r: f.Rating ? parseFloat(f.Rating) : null,
+    rw: f.Rewatch || "",
+    rc: Number.isFinite(f.RewatchCount) ? f.RewatchCount : 0,
+  }));
 
 // Re-inflate slim films back into the standard shape expected by analysis
 export const fattenFilms = slim =>
-  slim.map(s => ({ Name: s.n, Year: s.y, Rating: s.r != null ? String(s.r) : "" }));
+  slim.map(s => ({
+    Name: s.n,
+    Year: s.y,
+    Rating: s.r != null ? String(s.r) : "",
+    Rewatch: s.rw || "",
+    RewatchCount: Number.isFinite(s.rc) ? s.rc : 0,
+  }));

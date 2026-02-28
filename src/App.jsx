@@ -67,23 +67,25 @@ export default function App() {
       p1Name: myName.trim(),
       p1Films: slimFilms(myFilms),
       p1Diary2026: myMeta?.diary2026Count || 0,
+      p1Recent: myMeta?.recentDiary || [],
       p2Name: null,
       p2Films: null,
       p2Diary2026: null,
+      p2Recent: null,
       created: Date.now(),
     };
     try {
       await window.storage.set("blend:" + code, JSON.stringify(payload), true);
       setSessionCode(code);
       setScreen("waiting");
-      startPolling(code, myName.trim(), myFilms, myMeta?.diary2026Count || 0);
+      startPolling(code, myName.trim(), myFilms, myMeta?.diary2026Count || 0, myMeta?.recentDiary || []);
     } catch (e) {
       alert("Storage error: " + e.message);
     }
   };
 
   // Poll every 2.5 s until Person 2 uploads their data
-  const startPolling = (code, n1, f1, d1) => {
+  const startPolling = (code, n1, f1, d1, recent1 = []) => {
     if (pollRef.current) clearInterval(pollRef.current);
     pollRef.current = setInterval(async () => {
       try {
@@ -95,7 +97,7 @@ export default function App() {
           const f2 = fattenFilms(data.p2Films);
           setResN1(n1);
           setResN2(data.p2Name);
-          setResults(analyzeBlend(f1, f2, d1, data.p2Diary2026 || 0));
+          setResults(analyzeBlend(f1, f2, d1, data.p2Diary2026 || 0, recent1, data.p2Recent || []));
           setScreen("results");
         }
       } catch { }
@@ -131,11 +133,12 @@ export default function App() {
       data.p2Name = myName.trim();
       data.p2Films = slimFilms(myFilms);
       data.p2Diary2026 = myMeta?.diary2026Count || 0;
+      data.p2Recent = myMeta?.recentDiary || [];
       await window.storage.set("blend:" + joinCode, JSON.stringify(data), true);
       const f1 = fattenFilms(data.p1Films);
       setResN1(data.p1Name);
       setResN2(myName.trim());
-      setResults(analyzeBlend(f1, myFilms, data.p1Diary2026 || 0, myMeta?.diary2026Count || 0));
+      setResults(analyzeBlend(f1, myFilms, data.p1Diary2026 || 0, myMeta?.diary2026Count || 0, data.p1Recent || [], myMeta?.recentDiary || []));
       setScreen("results");
     } catch (e) {
       alert("Error saving: " + e.message);
@@ -207,7 +210,7 @@ export default function App() {
                 nameValue={myName}
                 onNameChange={setMyName}
                 loaded={myMeta}
-                onLoad={(films, fname, ratedCount, diary2026Count) => { setMyFilms(films); setMyMeta({ fname, count: films.length, ratedCount, diary2026Count }); }}
+                onLoad={(films, fname, ratedCount, diary2026Count, recentDiary) => { setMyFilms(films); setMyMeta({ fname, count: films.length, ratedCount, diary2026Count, recentDiary }); }}
               />
               <button className="action-btn" disabled={!myFilms || !myName.trim()} onClick={handleCreate}>
                 Generate Blend Code →
@@ -306,7 +309,7 @@ export default function App() {
                 nameValue={myName}
                 onNameChange={setMyName}
                 loaded={myMeta}
-                onLoad={(films, fname, ratedCount, diary2026Count) => { setMyFilms(films); setMyMeta({ fname, count: films.length, ratedCount, diary2026Count }); }}
+                onLoad={(films, fname, ratedCount, diary2026Count, recentDiary) => { setMyFilms(films); setMyMeta({ fname, count: films.length, ratedCount, diary2026Count, recentDiary }); }}
               />
               <button className="action-btn" disabled={!myFilms || !myName.trim()} onClick={handleJoinSubmit}>
                 ✦ &nbsp;See the Results&nbsp; ✦

@@ -16,14 +16,14 @@ export function FileUploader({ onLoad, loaded, showName = true, nameValue = "", 
     zip.file(new RegExp(filename.replace(".", "\\.") + "$", "i"))[0] ||
     null;
 
-  const finish = (films, fname, diary2026Count = 0) => {
+  const finish = (films, fname, diary2026Count = 0, recentDiary = []) => {
     if (!films.length) {
       setErr("No films found. Make sure it's your Letterboxd export zip.");
       return;
     }
     setErr(null);
     const ratedCount = films.filter(f => f.Rating).length;
-    onLoad(films, fname, ratedCount, diary2026Count);
+    onLoad(films, fname, ratedCount, diary2026Count, recentDiary);
   };
 
   const handleZip = async (file) => {
@@ -44,10 +44,12 @@ export function FileUploader({ onLoad, loaded, showName = true, nameValue = "", 
 
       let films;
       let diary2026Count = 0;
+      let diaryEntries = [];
+      let recentDiary = [];
 
       if (diaryFile) {
         const diaryText = await diaryFile.async("string");
-        const diaryEntries = parseLetterboxdCSV(diaryText);
+        diaryEntries = parseLetterboxdCSV(diaryText);
         console.log("Diary sample:", diaryEntries[0]);
         diary2026Count = diaryEntries.filter(entry => {
           const watchedDate = entry["Watched Date"] || entry.Date || entry["Date"];
@@ -56,6 +58,21 @@ export function FileUploader({ onLoad, loaded, showName = true, nameValue = "", 
           return year === "2026";
         }).length;
         console.log("2026 diary entries found:", diary2026Count);
+
+        recentDiary = diaryEntries
+          .filter(entry => entry.Name)
+          .map(entry => ({
+            Name: entry.Name,
+            Year: entry.Year || "",
+            Rating: entry.Rating || "",
+            WatchedDate: entry["Watched Date"] || entry.Date || entry["Date"] || "",
+          }))
+          .sort((a, b) => {
+            const ta = Date.parse(a.WatchedDate || "");
+            const tb = Date.parse(b.WatchedDate || "");
+            return (Number.isNaN(tb) ? 0 : tb) - (Number.isNaN(ta) ? 0 : ta);
+          })
+          .slice(0, 3);
       }
 
       if (watchedFile && ratingsFile) {
@@ -72,7 +89,26 @@ export function FileUploader({ onLoad, loaded, showName = true, nameValue = "", 
         films = parseLetterboxdCSV(await ratingsFile.async("string"));
       }
 
-      finish(films, file.name, diary2026Count);
+      if (diaryEntries.length) {
+        const norm = (s = "") => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+        const watchCountByName = {};
+        diaryEntries.forEach(entry => {
+          if (!entry.Name) return;
+          const k = norm(entry.Name);
+          watchCountByName[k] = (watchCountByName[k] || 0) + 1;
+        });
+
+        films = films.map(f => {
+          const k = norm(f.Name);
+          const watches = watchCountByName[k] || 0;
+          return {
+            ...f,
+            RewatchCount: Math.max(0, watches - 1),
+          };
+        });
+      }
+
+      finish(films, file.name, diary2026Count, recentDiary);
     } catch (e) {
       setErr("Couldn't read zip: " + e.message);
     }

@@ -8,6 +8,7 @@ import {
   BiggestClashCard,
   GenerosityGapCard,
   RecentlyWatchedCard,
+  ShareCard,
   FavYearCard,
   EraCard,
   WatchNextCard,
@@ -28,6 +29,7 @@ export function ResultsView({ results, n1, n2, onReset }) {
     <RecentlyWatchedCard key="recent" r={results} n1={n1} n2={n2} />,
     <FavYearCard key="year" r={results} n1={n1} n2={n2} />,
     <EraCard key="era" r={results} n1={n1} n2={n2} />,
+    <ShareCard key="share" r={results} n1={n1} n2={n2} />,
   ];
 
   const next = () => setCardIndex(i => Math.min(i + 1, cards.length - 1));

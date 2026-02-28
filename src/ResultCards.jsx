@@ -359,6 +359,8 @@ export function BiggestClashCard({ r, n1, n2 }) {
 }
 
 export function GenerosityGapCard({ r, n1, n2 }) {
+  const harsherName = r.generosityData?.harsher === "p1" ? n1 : n2;
+  const kinderName = r.generosityData?.kinder === "p1" ? n1 : n2;
   return (
     <div className="sc">
       <div className="sc-head">
@@ -371,16 +373,16 @@ export function GenerosityGapCard({ r, n1, n2 }) {
             <div className="hbox" style={{ flexDirection: "column", alignItems: "flex-start" }}>
               <div className="hbox-label">Harsher Critic</div>
               <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 18, fontWeight: 700, color: "var(--red)", lineHeight: 1 }}>
-                {r.generosityData.harsher}
+                {harsherName}
               </div>
-              <div className="hbox-sub">avg: {r.generosityData.harsher === n1 ? r.avg1 : r.avg2}★</div>
+              <div className="hbox-sub">avg: {r.generosityData.harsher === "p1" ? r.avg1 : r.avg2}★</div>
             </div>
             <div className="hbox" style={{ flexDirection: "column", alignItems: "flex-start" }}>
               <div className="hbox-label">More Generous</div>
               <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 18, fontWeight: 700, color: "var(--green)", lineHeight: 1 }}>
-                {r.generosityData.kinder}
+                {kinderName}
               </div>
-              <div className="hbox-sub">avg: {r.generosityData.kinder === n1 ? r.avg1 : r.avg2}★</div>
+              <div className="hbox-sub">avg: {r.generosityData.kinder === "p1" ? r.avg1 : r.avg2}★</div>
             </div>
           </div>
         )}
@@ -397,7 +399,7 @@ export function RecentlyWatchedCard({ r, n1, n2 }) {
     <div className="sc">
       <div className="sc-head">
         <div className="sc-title">Recently Watched</div>
-        <div className="sc-sub">latest films each of you added</div>
+        <div className="sc-sub">latest diary entries from each of you</div>
       </div>
       <div className="sc-body">
         <div className="two-col">
@@ -411,11 +413,59 @@ export function RecentlyWatchedCard({ r, n1, n2 }) {
                       <div className="film-title">{f.Name}</div>
                       <div className="film-year">{f.Year}</div>
                     </div>
+                    <Stars r={f.Rating ? parseFloat(f.Rating) : null} />
                   </div>
                 ))}
               </div>
             </div>
           ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function ShareCard({ r, n1, n2 }) {
+  const [copied, setCopied] = useState(false);
+  const shareText = `Cinema Blend for ${n1} × ${n2}\nBlend Score: ${r.blendScore}%\n${r.label}\nShared films: ${r.shared.length} (${r.sharedPct}%)`;
+
+  const copyShare = async () => {
+    try {
+      await navigator.clipboard?.writeText(shareText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch { }
+  };
+
+  const nativeShare = async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: "Cinema Blend",
+          text: shareText,
+        });
+      }
+    } catch { }
+  };
+
+  return (
+    <div className="sc">
+      <div className="sc-head">
+        <div className="sc-title">Share</div>
+        <div className="sc-sub">send your blend score to friends</div>
+      </div>
+      <div className="sc-body" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <div className="hbox" style={{ flexDirection: "column", gap: 8 }}>
+          <div className="hbox-label">preview</div>
+          <div className="hbox-sub" style={{ whiteSpace: "pre-line", lineHeight: 1.8 }}>{shareText}</div>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className={`copy-btn ${copied ? "copied" : ""}`} style={{ marginTop: 0, flex: 1 }} onClick={copyShare}>
+            {copied ? "✓ Copied" : "Copy Text"}
+          </button>
+          <button className="copy-btn" style={{ marginTop: 0, flex: 1 }} onClick={nativeShare}>
+            Share…
+          </button>
         </div>
       </div>
     </div>
