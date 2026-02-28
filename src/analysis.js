@@ -4,7 +4,7 @@
 // lowercase + strip non-alphanumeric so punctuation differences don't break matching
 const nk = name => name.toLowerCase().replace(/[^a-z0-9]/g, "");
 
-export function analyzeBlend(films1, films2) {
+export function analyzeBlend(films1, films2, diary2026_1 = 0, diary2026_2 = 0) {
   const map1 = {}, map2 = {};
   films1.forEach(f => { map1[nk(f.Name)] = f; });
   films2.forEach(f => { map2[nk(f.Name)] = f; });
@@ -32,11 +32,11 @@ export function analyzeBlend(films1, films2) {
     ? ratedShared.reduce((a, b) => a + b.diff, 0) / ratedShared.length
     : 0;
 
-  // 100% agreement when avgDiff = 0, 0% when avgDiff = 5 (max star gap)
   const ratingAgree = Math.max(0, Math.min(100, (1 - avgDiff / 5) * 100));
 
-  // Both components reach 100% when same file is uploaded on both sides
-  const blendScore = Math.min(100, Math.round(sharedPct * 0.45 + ratingAgree * 0.55));
+  const boostedShared = Math.min(100, sharedPct * 1.4);
+  const boostedRating = Math.min(100, ratingAgree * 1.15);
+  const blendScore = Math.min(100, Math.round(boostedShared * 0.5 + boostedRating * 0.5));
 
   const label =
     blendScore === 100 ? "one of you has to be copying the other one" :
@@ -82,7 +82,6 @@ export function analyzeBlend(films1, films2) {
     films.forEach(f => {
       if (!f.Year) return;
       const year = parseInt(f.Year);
-      if (year >= 2020) return;
       const dec = Math.floor(year / 10) * 10;
       d[dec] = (d[dec] || 0) + 1;
     });
@@ -92,29 +91,47 @@ export function analyzeBlend(films1, films2) {
   const decades2 = decadeCount(films2);
   const allDecades = [...new Set([...Object.keys(decades1), ...Object.keys(decades2)])]
     .map(Number)
-    .filter(d => d < 2020)
     .sort();
 
-  // Guilty pleasure: exclusive film rated furthest above the person's own average
-  const guiltyPleasure = (onlyList, avg) =>
-    [...onlyList]
-      .filter(f => f.Rating)
-      .map(f => ({ ...f, aboveAvg: parseFloat(f.Rating) - avg }))
-      .sort((a, b) => b.aboveAvg - a.aboveAvg)[0] || null;
-
-  const gp1 = guiltyPleasure(only1, avg1);
-  const gp2 = guiltyPleasure(only2, avg2);
-
-  // Favourite release year (most-watched)
-  const favYear = films => {
-    console.log("Sample years from films:", films.slice(0, 10).map(f => ({ name: f.Name, year: f.Year, yearType: typeof f.Year })));
-    const films2026 = films.filter(f => {
-      const year = f.Year ? String(f.Year).trim() : "";
-      return year === "2026";
+  const mostRewatched = films => {
+    const rewatchMap = {};
+    films.forEach(f => {
+      if (f.Rewatch === "Yes" || f.Rewatch === "true") {
+        rewatchMap[f.Name] = (rewatchMap[f.Name] || 0) + 1;
+      }
     });
-    console.log("2026 films found:", films2026.length, films2026.slice(0, 3).map(f => f.Name));
-    return films2026.length > 0 ? ["2026", films2026.length] : ["2026", 0];
+    const topRewatches = Object.entries(rewatchMap)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([name, count]) => ({ name, count }));
+    return topRewatches.length > 0 ? topRewatches : null;
   };
+
+  const biggestRatingClash = () => {
+    const clashes = shared
+      .filter(f => f.diff != null)
+      .sort((a, b) => b.diff - a.diff)
+      .slice(0, 5);
+    return clashes.length > 0 ? clashes : null;
+  };
+
+  const ratingGenerosityGap = () => {
+    const gap = Math.abs(parseFloat(avg1) - parseFloat(avg2));
+    const harsher = parseFloat(avg1) < parseFloat(avg2) ? n1 : n2;
+    const kinder = parseFloat(avg1) >= parseFloat(avg2) ? n1 : n2;
+    return { gap: gap.toFixed(2), harsher, kinder };
+  };
+
+  const recentlyWatched = (films, max = 5) => {
+    return films.slice(-max).reverse();
+  };
+
+  const topRewatch1 = mostRewatched(films1);
+  const topRewatch2 = mostRewatched(films2);
+  const clashData = biggestRatingClash();
+  const generosityData = ratingGenerosityGap();
+  const recent1 = recentlyWatched(films1, 3);
+  const recent2 = recentlyWatched(films2, 3);
 
   return {
     blendScore,
@@ -138,8 +155,14 @@ export function analyzeBlend(films1, films2) {
     allDecades,
     gp1,
     gp2,
-    topYear1: favYear(films1),
-    topYear2: favYear(films2),
+    topYear1: ["2026", diary2026_1],
+    topYear2: ["2026", diary2026_2],
+    topRewatch1,
+    topRewatch2,
+    clashData,
+    generosityData,
+    recent1,
+    recent2,
     ratedSharedCount: ratedShared.length,
   };
 }

@@ -83,7 +83,6 @@ export function StatsCard({ r, n1, n2 }) {
     </div>
   );
 }
-
 // ─── AgreedCard ───────────────────────────────────────────────────────────────
 
 export function AgreedCard({ r, n1, n2 }) {
@@ -175,33 +174,35 @@ export function ClashCard({ r, n1, n2 }) {
 
 // ─── GuiltyCard ───────────────────────────────────────────────────────────────
 
-export function GuiltyCard({ r, n1, n2 }) {
-  const Row = ({ gp, name, icon }) => gp ? (
-    <div className="hbox">
-      <div className="hbox-icon">{icon}</div>
-      <div>
-        <div className="hbox-label">{name}'s guilty pleasure</div>
-        <div className="hbox-val">{gp.Name}</div>
-        <div className="hbox-sub">
-          {gp.Year} · rated {gp.Rating}★ · +{gp.aboveAvg.toFixed(1)} above their avg
-        </div>
-      </div>
-    </div>
-  ) : (
-    <div className="hbox">
-      <div className="hbox-sub" style={{ color: "var(--muted)" }}>Not enough data for {name}</div>
-    </div>
-  );
-
+export function MostRewatchedCard({ r, n1, n2 }) {
   return (
     <div className="sc">
       <div className="sc-head">
-        <div className="sc-title">Guilty Pleasures</div>
-        <div className="sc-sub">films rated well above your own average</div>
+        <div className="sc-title">Most Rewatched</div>
+        <div className="sc-sub">films you came back to</div>
       </div>
-      <div className="sc-body" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <Row gp={r.gp1} name={n1} icon="🎪" />
-        <Row gp={r.gp2} name={n2} icon="🍿" />
+      <div className="sc-body">
+        <div className="two-col">
+          {[{ list: r.topRewatch1, name: n1 }, { list: r.topRewatch2, name: n2 }].map(({ list, name }) => (
+            <div key={name}>
+              <div className="col-label">{name}</div>
+              {list && list.length > 0 ? (
+                <div className="film-list">
+                  {list.map((f, i) => (
+                    <div className="film-row" key={i} style={{ paddingLeft: 0 }}>
+                      <div className="film-info">
+                        <div className="film-title">{f.name}</div>
+                      </div>
+                      <div className="film-year">{f.count}x</div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="hbox-sub" style={{ color: "var(--muted)" }}>No rewatches</div>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -305,6 +306,111 @@ export function WatchNextCard({ r, n1, n2 }) {
                       <div className="film-year">{f.Year}</div>
                     </div>
                     <Stars r={parseFloat(f.Rating)} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+export function BiggestClashCard({ r, n1, n2 }) {
+  return (
+    <div className="sc">
+      <div className="sc-head">
+        <div className="sc-title">Biggest Rating Clashes</div>
+        <div className="sc-sub">films you rated completely differently</div>
+      </div>
+      <div className="sc-body">
+        {!r.clashData || !r.clashData.length ? (
+          <p style={{ color: "var(--muted)", fontSize: 12 }}>No clashes found.</p>
+        ) : (
+          r.clashData.slice(0, 5).map((f, i) => {
+            const [hiW, hiR, loW, loR] = f.r1 >= f.r2
+              ? [n1, f.r1, n2, f.r2]
+              : [n2, f.r2, n1, f.r1];
+            return (
+              <div className="clash-row" key={i}>
+                <div className="clash-info">
+                  <div className="clash-title">{f.name}</div>
+                  <div className="clash-year">{f.year}</div>
+                </div>
+                <div className="clash-ratings">
+                  <div className="clash-r">
+                    <span className="clash-r-stars" style={{ color: "var(--red)" }}>★{loR}</span>
+                    <span className="clash-r-who">{loW.slice(0, 6)}</span>
+                  </div>
+                  <span className="clash-arrow">→</span>
+                  <div className="clash-r">
+                    <span className="clash-r-stars" style={{ color: "var(--green)" }}>★{hiR}</span>
+                    <span className="clash-r-who">{hiW.slice(0, 6)}</span>
+                  </div>
+                  <div className="clash-delta">Δ{f.diff.toFixed(1)}</div>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function GenerosityGapCard({ r, n1, n2 }) {
+  return (
+    <div className="sc">
+      <div className="sc-head">
+        <div className="sc-title">Rating Generosity</div>
+        <div className="sc-sub">who rates harsher or kinder</div>
+      </div>
+      <div className="sc-body">
+        {r.generosityData && (
+          <div className="two-col">
+            <div className="hbox" style={{ flexDirection: "column", alignItems: "flex-start" }}>
+              <div className="hbox-label">Harsher Critic</div>
+              <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 18, fontWeight: 700, color: "var(--red)", lineHeight: 1 }}>
+                {r.generosityData.harsher}
+              </div>
+              <div className="hbox-sub">avg: {r.generosityData.harsher === n1 ? r.avg1 : r.avg2}★</div>
+            </div>
+            <div className="hbox" style={{ flexDirection: "column", alignItems: "flex-start" }}>
+              <div className="hbox-label">More Generous</div>
+              <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 18, fontWeight: 700, color: "var(--green)", lineHeight: 1 }}>
+                {r.generosityData.kinder}
+              </div>
+              <div className="hbox-sub">avg: {r.generosityData.kinder === n1 ? r.avg1 : r.avg2}★</div>
+            </div>
+          </div>
+        )}
+        <div style={{ marginTop: 12, textAlign: "center", fontSize: 12, color: "var(--muted)" }}>
+          Gap: {r.generosityData?.gap}★
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function RecentlyWatchedCard({ r, n1, n2 }) {
+  return (
+    <div className="sc">
+      <div className="sc-head">
+        <div className="sc-title">Recently Watched</div>
+        <div className="sc-sub">latest films each of you added</div>
+      </div>
+      <div className="sc-body">
+        <div className="two-col">
+          {[{ list: r.recent1, name: n1 }, { list: r.recent2, name: n2 }].map(({ list, name }) => (
+            <div key={name}>
+              <div className="col-label">{name}</div>
+              <div className="film-list">
+                {list && list.map((f, i) => (
+                  <div className="film-row" key={i} style={{ paddingLeft: 0 }}>
+                    <div className="film-info">
+                      <div className="film-title">{f.Name}</div>
+                      <div className="film-year">{f.Year}</div>
+                    </div>
                   </div>
                 ))}
               </div>
