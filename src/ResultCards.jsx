@@ -411,6 +411,168 @@ export function NicheVsPopularCard({ r, n1, n2, tmdbState }) {
   );
 }
 
+export function CreatorSpotlightCard({ n1, n2, tmdbState }) {
+  const [activeTab, setActiveTab] = useState("p1");
+
+  const p1Director = tmdbState?.p1TopDirector || null;
+  const p2Director = tmdbState?.p2TopDirector || null;
+  const p1Actor = tmdbState?.p1TopActor || null;
+  const p2Actor = tmdbState?.p2TopActor || null;
+
+  const activeName = activeTab === "p1" ? n1 : n2;
+  const activeDirector = activeTab === "p1" ? p1Director : p2Director;
+  const activeActor = activeTab === "p1" ? p1Actor : p2Actor;
+
+  return (
+    <div className="sc">
+      <div className="sc-head">
+        <div className="sc-title">Most Watched People</div>
+        <div className="sc-sub">two tabs, most watched director + actor per person</div>
+      </div>
+      <div className="sc-body">
+        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+          {[{ key: "p1", label: n1 }, { key: "p2", label: n2 }].map(tab => (
+            <button
+              key={tab.key}
+              className="copy-btn"
+              onClick={() => setActiveTab(tab.key)}
+              style={{
+                marginTop: 0,
+                flex: 1,
+                opacity: activeTab === tab.key ? 1 : 0.65,
+                borderColor: activeTab === tab.key ? "var(--gold)" : "var(--border)",
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="hbox" style={{ flexDirection: "column", alignItems: "flex-start", marginBottom: 12 }}>
+          <div className="hbox-label">{activeName}'s most watched director</div>
+          {activeDirector ? (
+            <>
+              <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 28, fontWeight: 700, color: "var(--gold)", lineHeight: 1.2 }}>
+                {activeDirector.name}
+              </div>
+              <div className="hbox-sub">{activeDirector.count} films</div>
+            </>
+          ) : (
+            <div className="hbox-sub" style={{ color: "var(--muted)" }}>No director data yet</div>
+          )}
+        </div>
+
+        <div className="hbox" style={{ flexDirection: "column", alignItems: "flex-start" }}>
+          <div className="hbox-label">{activeName}'s most watched actor</div>
+          {activeActor ? (
+            <>
+              <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 28, fontWeight: 700, color: "var(--amber)", lineHeight: 1.2 }}>
+                {activeActor.name}
+              </div>
+              <div className="hbox-sub">{activeActor.count} films</div>
+            </>
+          ) : (
+            <div className="hbox-sub" style={{ color: "var(--muted)" }}>No actor data yet</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function HoursWatchedCard({ n1, n2, tmdbState }) {
+  const p1Hours = tmdbState?.p1HoursWatched;
+  const p2Hours = tmdbState?.p2HoursWatched;
+  const hasBoth = p1Hours != null && p2Hours != null;
+  const leader = !hasBoth
+    ? null
+    : p1Hours === p2Hours
+      ? null
+      : p1Hours > p2Hours
+        ? n1
+        : n2;
+
+  return (
+    <div className="sc">
+      <div className="sc-head">
+        <div className="sc-title">Hours Watched</div>
+        <div className="sc-sub">TMDB runtime total comparison</div>
+      </div>
+      <div className="sc-body">
+        <div className="two-col">
+          <div className="hbox" style={{ flexDirection: "column", alignItems: "flex-start" }}>
+            <div className="hbox-label">{n1}</div>
+            <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 32, fontWeight: 700, color: "var(--gold)", lineHeight: 1.2 }}>
+              {p1Hours != null ? `${p1Hours.toFixed(1)}h` : "N/A"}
+            </div>
+          </div>
+          <div className="hbox" style={{ flexDirection: "column", alignItems: "flex-start" }}>
+            <div className="hbox-label">{n2}</div>
+            <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 32, fontWeight: 700, color: "var(--amber)", lineHeight: 1.2 }}>
+              {p2Hours != null ? `${p2Hours.toFixed(1)}h` : "N/A"}
+            </div>
+          </div>
+        </div>
+        <div style={{ marginTop: 12, textAlign: "center", fontSize: 11, color: "var(--gold-dim)", letterSpacing: ".08em" }}>
+          {!hasBoth ? "need TMDB matches to compare" : leader ? `${leader} has watched more runtime` : "runtime is tied"}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function FavoriteGenreCard({ n1, n2, tmdbState }) {
+  const [activeTab, setActiveTab] = useState("p1");
+
+  const p1Genre = tmdbState?.p1FavGenre || null;
+  const p2Genre = tmdbState?.p2FavGenre || null;
+
+  const activeName = activeTab === "p1" ? n1 : n2;
+  const activeGenre = activeTab === "p1" ? p1Genre : p2Genre;
+
+  return (
+    <div className="sc">
+      <div className="sc-head">
+        <div className="sc-title">Favorite Genre</div>
+        <div className="sc-sub">one tab per person</div>
+      </div>
+      <div className="sc-body">
+        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+          {[{ key: "p1", label: n1 }, { key: "p2", label: n2 }].map(tab => (
+            <button
+              key={tab.key}
+              className="copy-btn"
+              onClick={() => setActiveTab(tab.key)}
+              style={{
+                marginTop: 0,
+                flex: 1,
+                opacity: activeTab === tab.key ? 1 : 0.65,
+                borderColor: activeTab === tab.key ? "var(--gold)" : "var(--border)",
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="hbox" style={{ flexDirection: "column", alignItems: "flex-start" }}>
+          <div className="hbox-label">{activeName}'s favorite genre</div>
+          {activeGenre ? (
+            <>
+              <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 30, fontWeight: 700, color: "var(--gold)", lineHeight: 1.2 }}>
+                {activeGenre.name}
+              </div>
+              <div className="hbox-sub">{activeGenre.count} films</div>
+            </>
+          ) : (
+            <div className="hbox-sub" style={{ color: "var(--muted)" }}>No genre data yet</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function BiggestClashCard({ r, n1, n2 }) {
   return (
     <div className="sc">

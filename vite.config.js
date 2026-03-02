@@ -30,10 +30,12 @@ const selectBestMatch = (filmName, filmYear, results) => {
   if (year) {
     const exactTitleAndYear = exactTitleMatches.find((r) => (r?.release_date || '').slice(0, 4) === year)
     if (exactTitleAndYear) return exactTitleAndYear
-    return null
+    if (exactTitleMatches.length) return exactTitleMatches[0]
   }
 
-  return exactTitleMatches[0] || null
+  if (exactTitleMatches.length) return exactTitleMatches[0]
+
+  return list[0] || null
 }
 
 const readJsonBody = (req) =>
@@ -130,11 +132,14 @@ const tmdbDevApiPlugin = (env) => {
   }
 
   const searchMovie = async (film, minRuntimeMinutes) => {
-    const cacheKey = `${normalize(film.name, film.year)}:${minRuntimeMinutes || 0}`
+    const cacheKey = `${normalize(film.name, film.year)}:${minRuntimeMinutes || 0}:with-credits:v2`
     const cached = getCache(tmdbSearchCache, cacheKey)
     if (cached) {
       const runtime = Number(cached.runtime || 0)
+      const hasCreatorFields = typeof cached.director === 'string' && typeof cached.topActor === 'string'
       if (minRuntimeMinutes > 0 && runtime < minRuntimeMinutes) {
+        tmdbSearchCache.delete(cacheKey)
+      } else if (!hasCreatorFields) {
         tmdbSearchCache.delete(cacheKey)
       } else {
         return cached
@@ -173,12 +178,13 @@ const tmdbDevApiPlugin = (env) => {
     const best = selectBestMatch(film.name, year, results)
     if (!best?.id) return null
 
-    const detailsParams = new URLSearchParams()
+    const detailsParams = new URLSearchParams({ append_to_response: 'credits' })
     if (apiKey) detailsParams.set('api_key', apiKey)
 
-    const detailKey = String(best.id)
+    const detailKey = `${best.id}:with-credits:v1`
     let details = getCache(tmdbDetailsCache, detailKey)
-    if (!details) {
+    const hasCredits = Array.isArray(details?.credits?.crew) || Array.isArray(details?.credits?.cast)
+    if (!details || !hasCredits) {
       const detailsResp = await scheduleTmdbCall(() =>
         requestJson(`https://api.themoviedb.org/3/movie/${best.id}?${detailsParams.toString()}`,
           authHeaders)
@@ -202,6 +208,20 @@ const tmdbDevApiPlugin = (env) => {
       voteCount: Number(best.vote_count || 0),
       voteAverage: Number(best.vote_average || 0),
       runtime,
+      genres: Array.isArray(details?.genres) ? details.genres.map((genre) => genre?.name).filter(Boolean) : [],
+      director: (() => {
+        const crew = Array.isArray(details?.credits?.crew) ? details.credits.crew : []
+        const preferred = crew.find((person) => person?.job === 'Director')
+        if (preferred?.name) return preferred.name
+        const fallback = crew.find((person) => person?.known_for_department === 'Directing' || person?.department === 'Directing')
+        return fallback?.name || ''
+      })(),
+      topActor: (() => {
+        const cast = Array.isArray(details?.credits?.cast) ? [...details.credits.cast] : []
+        if (!cast.length) return ''
+        cast.sort((a, b) => Number(a?.order ?? Number.MAX_SAFE_INTEGER) - Number(b?.order ?? Number.MAX_SAFE_INTEGER))
+        return cast[0]?.name || ''
+      })(),
     }
 
     setCache(tmdbSearchCache, cacheKey, out)

@@ -12,6 +12,9 @@ import {
   EraCard,
   WatchNextCard,
   NicheVsPopularCard,
+  CreatorSpotlightCard,
+  HoursWatchedCard,
+  FavoriteGenreCard,
 } from "./ResultCards";
 
 export function ResultsView({ results, n1, n2, onReset }) {
@@ -23,6 +26,14 @@ export function ResultsView({ results, n1, n2, onReset }) {
     p2Pick: null,
     p1AvgPopularity: null,
     p2AvgPopularity: null,
+    p1TopDirector: null,
+    p2TopDirector: null,
+    p1TopActor: null,
+    p2TopActor: null,
+    p1HoursWatched: null,
+    p2HoursWatched: null,
+    p1FavGenre: null,
+    p2FavGenre: null,
   });
 
   useEffect(() => {
@@ -33,8 +44,72 @@ export function ResultsView({ results, n1, n2, onReset }) {
       return items.reduce((sum, item) => sum + Number(item.popularity || 0), 0) / items.length;
     };
 
-    const mostNiche = (items) =>
-      [...items].sort((a, b) => a.voteCount - b.voteCount || a.popularity - b.popularity)[0] || null;
+    const topPerson = (items, key) => {
+      const counts = {};
+      items.forEach((item) => {
+        const name = String(item?.[key] || "").trim();
+        if (!name) return;
+        counts[name] = (counts[name] || 0) + 1;
+      });
+
+      const ranked = Object.entries(counts)
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+      if (!ranked.length) return null;
+      return { name: ranked[0][0], count: ranked[0][1] };
+    };
+
+    const hoursWatched = (items) => {
+      if (!items.length) return null;
+      const totalMinutes = items.reduce((sum, item) => sum + Number(item.runtime || 0), 0);
+      return totalMinutes / 60;
+    };
+
+    const favoriteGenre = (items) => {
+      const counts = {};
+      items.forEach((item) => {
+        const genres = Array.isArray(item?.genres) ? item.genres : [];
+        genres.forEach((genre) => {
+          const name = String(genre || "").trim();
+          if (!name) return;
+          counts[name] = (counts[name] || 0) + 1;
+        });
+      });
+
+      const ranked = Object.entries(counts)
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+      if (!ranked.length) return null;
+      return { name: ranked[0][0], count: ranked[0][1] };
+    };
+
+    const sortByNiche = (items) =>
+      [...items].sort((a, b) => a.voteCount - b.voteCount || a.popularity - b.popularity);
+
+    const isSameFilm = (left, right) => {
+      if (!left || !right) return false;
+      if (left.tmdbId && right.tmdbId) return left.tmdbId === right.tmdbId;
+
+      const leftTitle = String(left.title || "").trim().toLowerCase();
+      const rightTitle = String(right.title || "").trim().toLowerCase();
+      const leftYear = String(left.year || "").trim();
+      const rightYear = String(right.year || "").trim();
+      return leftTitle === rightTitle && leftYear === rightYear;
+    };
+
+    const pickUniqueNichePair = (p1Items, p2Items) => {
+      const p1Ranked = sortByNiche(p1Items);
+      const p2Ranked = sortByNiche(p2Items);
+
+      const maxIndex = Math.max(p1Ranked.length, p2Ranked.length);
+      for (let index = 0; index < maxIndex; index += 1) {
+        const p1Pick = p1Ranked[index] || null;
+        const p2Pick = p2Ranked[index] || null;
+        if (!p1Pick || !p2Pick || !isSameFilm(p1Pick, p2Pick)) {
+          return { p1Pick, p2Pick };
+        }
+      }
+
+      return { p1Pick: p1Ranked[0] || null, p2Pick: p2Ranked[0] || null };
+    };
 
     const p1Local = (results.allFilms1 || []).map(f => ({
       title: f.Name,
@@ -59,6 +134,14 @@ export function ResultsView({ results, n1, n2, onReset }) {
         p2Pick: p2Local[0] || null,
         p1AvgPopularity: avgPopularity(p1Local),
         p2AvgPopularity: avgPopularity(p2Local),
+        p1TopDirector: null,
+        p2TopDirector: null,
+        p1TopActor: null,
+        p2TopActor: null,
+        p1HoursWatched: null,
+        p2HoursWatched: null,
+        p1FavGenre: null,
+        p2FavGenre: null,
       });
     };
 
@@ -88,7 +171,7 @@ export function ResultsView({ results, n1, n2, onReset }) {
           let backendError = "";
           try {
             const payload = await res.json();
-            if (payload?.error) backendError = "";
+            if (payload?.error) backendError = payload.error;
           } catch {}
           return pickFallback(backendError);
         }
@@ -117,14 +200,24 @@ export function ResultsView({ results, n1, n2, onReset }) {
           .filter(x => x.candidate.owner === "p2")
           .map(x => x.tmdb);
 
+        const { p1Pick, p2Pick } = pickUniqueNichePair(p1Pool, p2Pool);
+
         if (cancelled) return;
         setTmdbNicheState({
           loading: false,
           error: "",
-          p1Pick: mostNiche(p1Pool),
-          p2Pick: mostNiche(p2Pool),
+          p1Pick,
+          p2Pick,
           p1AvgPopularity: avgPopularity(p1Pool),
           p2AvgPopularity: avgPopularity(p2Pool),
+          p1TopDirector: topPerson(p1Pool, "director"),
+          p2TopDirector: topPerson(p2Pool, "director"),
+          p1TopActor: topPerson(p1Pool, "topActor"),
+          p2TopActor: topPerson(p2Pool, "topActor"),
+          p1HoursWatched: hoursWatched(p1Pool),
+          p2HoursWatched: hoursWatched(p2Pool),
+          p1FavGenre: favoriteGenre(p1Pool),
+          p2FavGenre: favoriteGenre(p2Pool),
         });
       } catch {
         pickFallback();
@@ -143,6 +236,9 @@ export function ResultsView({ results, n1, n2, onReset }) {
     <AgreedCard key="agreed" r={results} n1={n1} n2={n2} />,
     <ClashCard key="clash" r={results} n1={n1} n2={n2} />,
     <NicheVsPopularCard key="niche-popular" r={results} n1={n1} n2={n2} tmdbState={tmdbNicheState} />,
+    <CreatorSpotlightCard key="creator-spotlight" r={results} n1={n1} n2={n2} tmdbState={tmdbNicheState} />,
+    <HoursWatchedCard key="hours-watched" n1={n1} n2={n2} tmdbState={tmdbNicheState} />,
+    <FavoriteGenreCard key="favorite-genre" n1={n1} n2={n2} tmdbState={tmdbNicheState} />,
     <WatchNextCard key="watch" r={results} n1={n1} n2={n2} />,
     <MostRewatchedCard key="rewatch" r={results} n1={n1} n2={n2} />,
     <FavYearCard key="year" r={results} n1={n1} n2={n2} />,
