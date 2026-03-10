@@ -286,28 +286,71 @@ export function EraCard({ r, n1, n2 }) {
 
 // ─── WatchNextCard ────────────────────────────────────────────────────────────
 
-export function WatchNextCard({ r, n1, n2 }) {
+export function WatchNextCard({ r, n1, n2, tmdbState }) {
+  const normalizeKey = (title, year) => {
+    const normalizedTitle = String(title || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const normalizedYear = String(year || "").slice(0, 4);
+    return `${normalizedTitle}:${normalizedYear}`;
+  };
+
+  const getPopularity = (film, popularityIndex) => {
+    if (!film || !popularityIndex) return Number.POSITIVE_INFINITY;
+    const key = normalizeKey(film.Name, film.Year);
+    const value = popularityIndex[key];
+    return Number.isFinite(value) ? value : Number.POSITIVE_INFINITY;
+  };
+
+  const rankRecommendations = (list, popularityIndex) =>
+    [...(Array.isArray(list) ? list : [])]
+      .filter((film) => Number.parseFloat(film?.Rating || 0) >= 5)
+      .reduce((acc, film) => {
+        const key = normalizeKey(film?.Name, film?.Year);
+        if (acc.seen.has(key)) return acc;
+        acc.seen.add(key);
+        acc.items.push(film);
+        return acc;
+      }, { items: [], seen: new Set() }).items
+      .sort((a, b) => {
+        const popularityA = getPopularity(a, popularityIndex);
+        const popularityB = getPopularity(b, popularityIndex);
+        if (popularityA !== popularityB) return popularityA - popularityB;
+
+        return String(a?.Name || "").localeCompare(String(b?.Name || ""));
+      })
+      .map((film) => ({
+        film,
+        popularity: getPopularity(film, popularityIndex),
+      }))
+      .slice(0, 6);
+
+  const p1List = rankRecommendations(r.topOnly1, tmdbState?.p1PopularityIndex || {});
+  const p2List = rankRecommendations(r.topOnly2, tmdbState?.p2PopularityIndex || {});
+
   return (
     <div className="sc">
       <div className="sc-head">
         <div className="sc-title">Watch Next</div>
-        <div className="sc-sub">top picks the other hasn't seen yet</div>
+        <div className="sc-sub">5-star hidden gems from least to most popular</div>
       </div>
       <div className="sc-body">
         <div className="two-col">
-          {[{ list: r.topOnly1, name: n1 }, { list: r.topOnly2, name: n2 }].map(({ list, name }) => (
+          {[{ list: p1List, name: n1 }, { list: p2List, name: n2 }].map(({ list, name }) => (
             <div key={name}>
               <div className="col-label">{name} recommends →</div>
               <div className="film-list">
-                {list.map(f => (
-                  <div className="film-row" key={f.Name} style={{ paddingLeft: 0 }}>
-                    <div className="film-info">
-                      <div className="film-title">{f.Name}</div>
-                      <div className="film-year">{f.Year}</div>
+                {!list.length ? (
+                  <div className="hbox-sub" style={{ color: "var(--muted)" }}>No 5-star recommendations yet</div>
+                ) : (
+                  list.map(({ film, popularity }) => (
+                    <div className="film-row" key={`${film.Name}:${film.Year || ""}`} style={{ paddingLeft: 0 }}>
+                      <div className="film-info">
+                        <div className="film-title">{film.Name}</div>
+                        <div className="film-year">{film.Year}</div>
+                      </div>
+                      <Stars r={parseFloat(film.Rating)} />
                     </div>
-                    <Stars r={parseFloat(f.Rating)} />
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
           ))}

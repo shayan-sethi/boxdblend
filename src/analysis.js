@@ -146,13 +146,11 @@ export function analyzeBlend(films1, films2, diary2026_1 = 0, diary2026_2 = 0, r
 
   const topOnly1 = [...only1]
     .filter(f => f.Rating)
-    .sort((a, b) => parseFloat(b.Rating) - parseFloat(a.Rating))
-    .slice(0, 6);
+    .sort((a, b) => parseFloat(b.Rating) - parseFloat(a.Rating));
 
   const topOnly2 = [...only2]
     .filter(f => f.Rating)
-    .sort((a, b) => parseFloat(b.Rating) - parseFloat(a.Rating))
-    .slice(0, 6);
+    .sort((a, b) => parseFloat(b.Rating) - parseFloat(a.Rating));
 
   const popularPick = [...ratedShared]
     .sort((a, b) => (b.r1 + b.r2) - (a.r1 + a.r2) || a.diff - b.diff)

@@ -34,6 +34,8 @@ export function ResultsView({ results, n1, n2, onReset }) {
     p2HoursWatched: null,
     p1FavGenre: null,
     p2FavGenre: null,
+    p1PopularityIndex: {},
+    p2PopularityIndex: {},
   });
 
   useEffect(() => {
@@ -83,6 +85,28 @@ export function ResultsView({ results, n1, n2, onReset }) {
 
     const sortByNiche = (items) =>
       [...items].sort((a, b) => a.voteCount - b.voteCount || a.popularity - b.popularity);
+
+    const normalizeKey = (title, year) => {
+      const normalizedTitle = String(title || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      const normalizedYear = String(year || "").slice(0, 4);
+      return `${normalizedTitle}:${normalizedYear}`;
+    };
+
+    const buildPopularityIndex = (items) => {
+      const index = {};
+      (Array.isArray(items) ? items : []).forEach((item) => {
+        const popularity = Number(item?.popularity || 0);
+
+        // Index by original input fields to match Letterboxd CSV names reliably.
+        const inputKey = normalizeKey(item?.inputName, item?.inputYear);
+        if (inputKey) index[inputKey] = popularity;
+
+        // Also index by TMDB canonical title/year as a fallback.
+        const tmdbKey = normalizeKey(item?.title, item?.year);
+        if (tmdbKey) index[tmdbKey] = popularity;
+      });
+      return index;
+    };
 
     const isSameFilm = (left, right) => {
       if (!left || !right) return false;
@@ -142,6 +166,8 @@ export function ResultsView({ results, n1, n2, onReset }) {
         p2HoursWatched: null,
         p1FavGenre: null,
         p2FavGenre: null,
+        p1PopularityIndex: {},
+        p2PopularityIndex: {},
       });
     };
 
@@ -218,6 +244,8 @@ export function ResultsView({ results, n1, n2, onReset }) {
           p2HoursWatched: hoursWatched(p2Pool),
           p1FavGenre: favoriteGenre(p1Pool),
           p2FavGenre: favoriteGenre(p2Pool),
+          p1PopularityIndex: buildPopularityIndex(p1Pool),
+          p2PopularityIndex: buildPopularityIndex(p2Pool),
         });
       } catch {
         pickFallback();
@@ -239,7 +267,7 @@ export function ResultsView({ results, n1, n2, onReset }) {
     <CreatorSpotlightCard key="creator-spotlight" r={results} n1={n1} n2={n2} tmdbState={tmdbNicheState} />,
     <HoursWatchedCard key="hours-watched" n1={n1} n2={n2} tmdbState={tmdbNicheState} />,
     <FavoriteGenreCard key="favorite-genre" n1={n1} n2={n2} tmdbState={tmdbNicheState} />,
-    <WatchNextCard key="watch" r={results} n1={n1} n2={n2} />,
+    <WatchNextCard key="watch" r={results} n1={n1} n2={n2} tmdbState={tmdbNicheState} />,
     <MostRewatchedCard key="rewatch" r={results} n1={n1} n2={n2} />,
     <FavYearCard key="year" r={results} n1={n1} n2={n2} />,
     <EraCard key="era" r={results} n1={n1} n2={n2} />,
